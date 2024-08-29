@@ -20,6 +20,29 @@ services:
     volumes:
       - stream-cache:/data
 
+  backend-service:
+    build:
+      context: ./../backend-service
+      dockerfile: ./../backend-service/backend-service.dockerfile
+    restart: always
+    ports:
+      - "8080:8080"
+    deploy:
+      mode: replicated
+      replicas: 1
+
+  game-service:
+    build:
+      context: ./../game-service
+      dockerfile: ./../game-service/game-service.dockerfile
+    restart: always
+    ports:
+      - "8081:8081"
+    deploy:
+      mode: replicated
+      replicas: 1
+  
+
 volumes:
   stream-cache:
     driver: local

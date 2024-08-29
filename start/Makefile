@@ -1,5 +1,5 @@
-GRAPH_BINARY=graphApp
-FOLLOW_BINARY=followApp
+BACKEND_BINARY=backendApp
+GAME_BINARY=gameApp
 
 
 ## up: starts all containers in the background without forcing build
@@ -8,7 +8,7 @@ up:
 	docker compose up -d
 	@echo "Docker images started!"
 
-up_build:
+up_build: build_backend build_game
 	@echo "Stopping docker images (if running...)"
 	docker compose down
 	@echo "Building (when required) and starting docker images..."
