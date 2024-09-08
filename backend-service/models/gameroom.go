@@ -5,7 +5,6 @@ type GameRoomRequest struct {
 	MinPlayers int    `json:"minPlayers" binding:"required"`
 	MaxPlayers int    `json:"maxPlayers" binding:"required"`
 	CreatedBy  string `json:"createdBy" binding:"required"`
-	Type       string `json:"type" binding:"required,oneof=local live"`
 }
 
 // GameRoom represents the structure of a game room in Redis

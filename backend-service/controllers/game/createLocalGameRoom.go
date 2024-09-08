@@ -19,7 +19,7 @@ func CreateLocalGameRoom(c *gin.Context) {
 	}
 
 	// Generate game room ID
-	roomID := "room" + uuid.New().String()
+	roomID := "room-" + uuid.New().String()
 
 	// Create a new GameRoom instance
 	gameRoom := models.GameRoomEntity{
@@ -27,7 +27,7 @@ func CreateLocalGameRoom(c *gin.Context) {
 		MinPlayers:            request.MinPlayers,
 		MaxPlayers:            request.MaxPlayers,
 		CreatedBy:             request.CreatedBy,
-		Type:                  request.Type,
+		Type:                  "local",
 		Status:                "waiting",  // Initial status set to "waiting"
 		ConnectedPlayers:      []string{}, // Initialize empty list for connected players
 		UnityConnectedPlayers: []string{}, // Initialize empty list for Unity connected players
