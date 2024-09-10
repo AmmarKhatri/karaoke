@@ -17,7 +17,7 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	// RoomID and player IDs
-	roomID := "room-5b13c2ff-14c3-4e14-a3b4-7dc43f0cdd7b"
+	roomID := "room-fb4b63f5-6809-4eac-8149-fdd763407de0"
 	listenerID := "listener1"
 	producerID := "producer1"
 

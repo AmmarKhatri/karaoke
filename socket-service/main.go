@@ -5,22 +5,32 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"socket-service/utils"
+	"syscall"
+	"time"
 
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/googollee/go-socket.io/engineio"
 	"github.com/googollee/go-socket.io/engineio/transport"
 	"github.com/googollee/go-socket.io/engineio/transport/polling"
+	"github.com/googollee/go-socket.io/engineio/transport/websocket"
 	"github.com/redis/go-redis/v9"
 )
 
 var ctx = context.Background()
 
 func main() {
-	// Create a new Socket.IO server with polling-only transport
+	// Create a new Socket.IO server with polling and websocket transport
 	server := socketio.NewServer(&engineio.Options{
 		Transports: []transport.Transport{
 			&polling.Transport{
+				CheckOrigin: func(r *http.Request) bool {
+					return true
+				},
+			},
+			&websocket.Transport{
 				CheckOrigin: func(r *http.Request) bool {
 					return true
 				},
@@ -37,7 +47,6 @@ func main() {
 	server.OnConnect("/", func(s socketio.Conn) error {
 		s.SetContext("")
 		fmt.Println("Connected:", s.ID())
-		s.Emit("connect", "Connected to server")
 		return nil
 	})
 
@@ -82,10 +91,38 @@ func main() {
 	defer server.Close()
 
 	http.Handle("/socket.io/", server)
-	http.Handle("/", http.FileServer(http.Dir("../asset")))
 
-	log.Println("Serving at localhost:3000...")
-	log.Fatal(http.ListenAndServe(":3000", nil))
+	// Graceful shutdown handling
+	httpServer := &http.Server{Addr: ":3000"}
+
+	// Create a channel to listen for OS signals
+	stopChan := make(chan os.Signal, 1)
+	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
+
+	// Start the HTTP server in a goroutine
+	go func() {
+		log.Println("Serving at localhost:3000...")
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP listen error: %s\n", err)
+		}
+	}()
+
+	// Wait for an interrupt signal
+	<-stopChan
+	log.Println("Shutting down server...")
+
+	// Create a context with a timeout for the shutdown process
+	ctxShutDown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Gracefully shut down the Socket.IO server
+	server.Close()
+
+	// Gracefully shut down the HTTP server
+	if err := httpServer.Shutdown(ctxShutDown); err != nil {
+		log.Fatalf("HTTP server shutdown failed: %s", err)
+	}
+	log.Println("Server gracefully stopped")
 }
 
 // Check if the Redis stream exists for the game room

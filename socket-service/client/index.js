@@ -11,10 +11,10 @@ const roomID = "room-1234"; // The ID of the game room
 
 // Connect to the Socket.IO server
 const socket = io("http://localhost:3000", {
-  transports: ["websocket", "polling"],
+  transports: ["polling"], // Both WebSocket and polling
   reconnection: true,
-  reconnectionAttempts: 5,
-  timeout: 10000, 
+  reconnectionAttempts: 5, // Number of reconnection attempts before giving up
+  timeout: 10000, // Timeout for establishing the connection
   pingInterval: 25000, // Send a ping every 25 seconds
   pingTimeout: 60000, // Timeout if no pong response is received within 60 seconds
 });

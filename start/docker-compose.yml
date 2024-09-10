@@ -39,16 +39,18 @@ services:
     deploy:
       mode: replicated
       replicas: 1
-  socket-service:
-    build:
-      context: ./../socket-service
-      dockerfile: ./../socket-service/socket-service.dockerfile
-    restart: always
-    ports:
-      - "3000:3000"
-    deploy:
-      mode: replicated
-      replicas: 1
+    depends_on:
+      - redis
+  # socket-service:
+  #   build:
+  #     context: ./../socket-service
+  #     dockerfile: ./../socket-service/socket-service.dockerfile
+  #   restart: always
+  #   ports:
+  #     - "3000:3000"
+  #   deploy:
+  #     mode: replicated
+  #     replicas: 1
 
 volumes:
   stream-cache:

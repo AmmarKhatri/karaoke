@@ -16,7 +16,7 @@ func HandleConnections(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal("WebSocket upgrade failed:", err)
 	}
-	defer ws.Close()
+	//defer ws.Close()
 
 	// Register the new client
 	clients[ws] = true
