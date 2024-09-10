@@ -23,6 +23,16 @@ func StartProducer(roomID, playerID string) {
 	// Channel to signal when the connection should be closed
 	done := make(chan struct{})
 
+	// Send "startGame" event immediately after joining
+	err = conn.WriteJSON(map[string]string{
+		"eventType": "startGame",
+		"playerID":  playerID,
+		"data":      "Starting game",
+	})
+	if err != nil {
+		log.Fatal("Error sending startGame event:", err)
+	}
+
 	// Goroutine to listen for messages from the server
 	go func() {
 		for {
@@ -42,9 +52,11 @@ func StartProducer(roomID, playerID string) {
 		}
 	}()
 
-	// Send data every second
+	// Send data every second for only 10 seconds
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
+
+	timeout := time.After(10 * time.Second) // Stop sending data after 10 seconds
 
 	for {
 		select {
@@ -61,6 +73,9 @@ func StartProducer(roomID, playerID string) {
 				return
 			}
 			log.Printf("Producer %s sent data", playerID)
+		case <-timeout:
+			log.Println("Stopping data transmission after 10 seconds.")
+			return
 		case <-done: // Exit the loop if the connection is closed
 			log.Println("Exiting producer due to server close event")
 			return

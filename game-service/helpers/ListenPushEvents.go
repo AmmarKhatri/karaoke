@@ -13,7 +13,7 @@ func listenToGameRoom(redisClient *redis.Client, roomID string, ws *websocket.Co
 	// Send regular ping messages to keep the connection alive
 	ticker := time.NewTicker(50 * time.Second)
 	defer ticker.Stop()
-
+	//defer ws.Close()
 	for {
 		select {
 		case <-ticker.C:
@@ -38,7 +38,7 @@ func listenToGameRoom(redisClient *redis.Client, roomID string, ws *websocket.Co
 			if len(entries) > 0 {
 				for _, entry := range entries[0].Messages {
 					eventType := entry.Values["eventType"].(string)
-					playerID := entry.Values["playerID"].(string)
+					playerID := entry.Values["createdBy"].(string)
 					data := entry.Values["data"].(string)
 
 					// Send event to the WebSocket client

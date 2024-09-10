@@ -4,7 +4,6 @@ import (
 	"backend-service/models"
 	"backend-service/utils"
 	"log"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -36,7 +35,7 @@ func CreateLocalGameRoom(c *gin.Context) {
 	}
 
 	// Save the game room to Redis (key-value store for room info)
-	err := utils.Set(utils.Redis, gameRoom.ID, gameRoom, 24*time.Hour) // Set expiration as needed
+	err := utils.Set(utils.Redis, gameRoom.ID, gameRoom, 0) // Set expiration as needed
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to create game room"})
 		return
@@ -48,7 +47,8 @@ func CreateLocalGameRoom(c *gin.Context) {
 		Stream: streamKey,
 		Values: map[string]interface{}{
 			"eventType": "gameRoomCreated",
-			"message":   "Game room has been created",
+			"createdBy": request.CreatedBy,
+			"data":      "Game room has been created",
 		},
 	}).Result()
 	log.Println(res)

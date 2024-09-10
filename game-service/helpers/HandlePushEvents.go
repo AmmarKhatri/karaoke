@@ -10,6 +10,7 @@ import (
 
 func handlePusherEvents(redisClient *redis.Client, roomID, playerID string, ws *websocket.Conn) {
 	log.Println("Inside of Push events!!")
+	//defer ws.Close()
 	for {
 		var event GameRoomEvent
 
@@ -21,12 +22,25 @@ func handlePusherEvents(redisClient *redis.Client, roomID, playerID string, ws *
 		}
 		log.Println("Printing event!")
 		log.Println(event)
+		// Validate event before pushing to stream
+		err, kill := ValidateEvent(event, roomID)
+		if err != nil {
+			log.Printf("Invalid event: %v", err)
+			continue
+		}
+		// Kill if breaking event
+		if kill {
+			closeMessage := websocket.FormatCloseMessage(websocket.CloseNormalClosure, err.Error())
+			ws.WriteMessage(websocket.CloseMessage, closeMessage)
+			ws.Close()
+			return
+		}
 		// Publish event to Redis Stream
 		res, err := redisClient.XAdd(context.Background(), &redis.XAddArgs{
 			Stream: "stream:" + roomID,
 			Values: map[string]interface{}{
 				"eventType": event.EventType,
-				"playerID":  playerID,
+				"createdBy": playerID,
 				"data":      event.Data,
 			},
 		}).Result()
