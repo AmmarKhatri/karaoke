@@ -1,6 +1,6 @@
 BACKEND_BINARY=backendApp
 GAME_BINARY=gameApp
-
+SOCK_BINARY=sockApp
 
 ## up: starts all containers in the background without forcing build
 up:
@@ -8,7 +8,7 @@ up:
 	docker compose up -d
 	@echo "Docker images started!"
 
-up_build: build_backend build_game
+up_build: build_backend build_game build_socket
 	@echo "Stopping docker images (if running...)"
 	docker compose down
 	@echo "Building (when required) and starting docker images..."
@@ -31,4 +31,10 @@ build_backend:
 build_game:
 	@echo "Building backend binary..."
 	cd ../game-service && env GOOS=linux CGO_ENABLED=0 go build -o ${GAME_BINARY} .
+	@echo "Done!"
+
+## build_socket: builds the socket binary as a linux executable
+build_socket:
+	@echo "Building backend binary..."
+	cd ../socket-service && env GOOS=linux CGO_ENABLED=0 go build -o ${SOCK_BINARY} .
 	@echo "Done!"
