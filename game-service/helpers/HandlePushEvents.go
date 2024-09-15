@@ -10,7 +10,7 @@ import (
 
 func handlePusherEvents(redisClient *redis.Client, roomID, playerID string, ws *websocket.Conn) {
 	log.Println("Inside of Push events!!")
-	//defer ws.Close()
+	defer ws.Close()
 	for {
 		var event GameRoomEvent
 

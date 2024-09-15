@@ -13,7 +13,7 @@ func listenToGameRoom(redisClient *redis.Client, roomID string, ws *websocket.Co
 	// Send regular ping messages to keep the connection alive
 	ticker := time.NewTicker(50 * time.Second)
 	defer ticker.Stop()
-	//defer ws.Close()
+	defer ws.Close()
 	for {
 		select {
 		case <-ticker.C:

@@ -3,6 +3,7 @@ package scripts
 import (
 	"log"
 	"net/url"
+	"os"
 
 	"github.com/gorilla/websocket"
 )
@@ -10,8 +11,13 @@ import (
 var Addr = "localhost:8081"
 
 // Function to create a listener connection
-func StartListener(roomID, playerID string) {
-	u := url.URL{Scheme: "ws", Host: Addr, Path: "/ws", RawQuery: "roomID=" + roomID + "&playerID=" + playerID + "&role=listener"}
+func StartListener(roomID, playerID string, interrupt chan os.Signal) {
+	u := url.URL{
+		Scheme:   "ws",
+		Host:     Addr,
+		Path:     "/ws",
+		RawQuery: "roomID=" + roomID + "&playerID=" + playerID + "&role=listener",
+	}
 	log.Printf("Listener %s connecting to %s", playerID, u.String())
 
 	// Establish WebSocket connection
@@ -26,6 +32,7 @@ func StartListener(roomID, playerID string) {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
 			log.Println("Listener read error:", err)
+			interrupt <- os.Interrupt
 			break
 		}
 		log.Printf("Listener %s received: %s", playerID, message)

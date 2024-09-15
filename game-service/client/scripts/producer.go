@@ -3,13 +3,14 @@ package scripts
 import (
 	"log"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
 
 // Function to create a producer connection
-func StartProducer(roomID, playerID string) {
+func StartProducer(roomID, playerID string, interrupt chan os.Signal) {
 	u := url.URL{Scheme: "ws", Host: Addr, Path: "/ws", RawQuery: "roomID=" + roomID + "&playerID=" + playerID + "&role=pusher"}
 	log.Printf("Producer %s connecting to %s", playerID, u.String())
 
@@ -75,9 +76,11 @@ func StartProducer(roomID, playerID string) {
 			log.Printf("Producer %s sent data", playerID)
 		case <-timeout:
 			log.Println("Stopping data transmission after 10 seconds.")
+			interrupt <- os.Interrupt
 			return
 		case <-done: // Exit the loop if the connection is closed
 			log.Println("Exiting producer due to server close event")
+			interrupt <- os.Interrupt
 			return
 		}
 	}
