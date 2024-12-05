@@ -19,7 +19,7 @@ func main() {
 	// Create a 'done' channel to signal when to exit
 
 	// RoomID and player IDs
-	roomID := "room-7174a51b-a936-4663-8238-faae7466f13b"
+	roomID := "room-2863eff5-8afd-40a7-8c9c-0c42844a29f9"
 	listenerID := "listener1"
 	producerID := "producer1"
 
