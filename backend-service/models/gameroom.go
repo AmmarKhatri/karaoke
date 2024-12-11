@@ -18,3 +18,8 @@ type GameRoomEntity struct {
 	ConnectedPlayers      []string `json:"connectedPlayers"`
 	UnityConnectedPlayers []string `json:"unityConnectedPlayers"`
 }
+type LiveGameRoomRequest struct {
+	SkillLevel string `json:"skillLevel" binding:"required"`
+	GameType   string `json:"gameType" binding:"required"`
+	CreatedBy  string `json:"createdBy" binding:"required"`
+}
