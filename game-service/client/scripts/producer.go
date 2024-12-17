@@ -9,9 +9,24 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// Function to create a producer connection
+// // Listen for messages from the server
+//
+//	go func() {
+//		for {
+//			_, message, err := conn.ReadMessage()
+//			if err != nil {
+//				log.Printf("Producer read error: %v", err)
+//				close(done)
+//				return
+//			}
+//			log.Printf("Producer %s received: %s", playerID, message)
+//		}
+//	}()
+//
+// StartProducer handles the producer role
+// StartProducer handles the producer role
 func StartProducer(roomID, playerID string, interrupt chan os.Signal) {
-	u := url.URL{Scheme: "ws", Host: Addr, Path: "/ws", RawQuery: "roomID=" + roomID + "&playerID=" + playerID + "&role=pusher"}
+	u := url.URL{Scheme: "ws", Host: Addr, Path: "/ws", RawQuery: "roomID=" + roomID + "&playerID=" + playerID + "&role=phone"}
 	log.Printf("Producer %s connecting to %s", playerID, u.String())
 
 	// Establish WebSocket connection
@@ -21,48 +36,21 @@ func StartProducer(roomID, playerID string, interrupt chan os.Signal) {
 	}
 	defer conn.Close()
 
-	// Channel to signal when the connection should be closed
 	done := make(chan struct{})
 
-	// Send "startGame" event immediately after joining
-	err = conn.WriteJSON(map[string]string{
-		"eventType": "startGame",
-		"playerID":  playerID,
-		"data":      "Starting game",
-	})
-	if err != nil {
-		log.Fatal("Error sending startGame event:", err)
-	}
-
-	// Goroutine to listen for messages from the server
-	go func() {
-		for {
-			// Read messages from the WebSocket server
-			_, message, err := conn.ReadMessage()
-			if err != nil {
-				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-					log.Printf("Server closed connection: %v", err)
-					close(done) // Signal to close the ticker and exit
-					return
-				}
-				log.Println("Error reading WebSocket message:", err)
-				close(done)
-				return
-			}
-			log.Printf("Producer %s received: %s", playerID, message)
-		}
-	}()
-
-	// Send data every second for only 10 seconds
+	// Ticker to send events every second
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
-	timeout := time.After(10 * time.Second) // Stop sending data after 10 seconds
+	// Timers
+	stopSendingEvents := time.After(22 * time.Second) // Stop sending events
+	gracefulShutdown := time.After(40 * time.Second)  // Send CloseMessage and shut down
 
+	// Main loop
 	for {
 		select {
 		case t := <-ticker.C:
-			// Send a JSON message
+			// Send JSON event every second
 			err := conn.WriteJSON(map[string]string{
 				"eventType": "sendData",
 				"playerID":  playerID,
@@ -74,12 +62,25 @@ func StartProducer(roomID, playerID string, interrupt chan os.Signal) {
 				return
 			}
 			log.Printf("Producer %s sent data", playerID)
-		case <-timeout:
-			log.Println("Stopping data transmission after 10 seconds.")
+
+		case <-stopSendingEvents:
+			// Stop the ticker after 22 seconds
+			log.Println("Stopping event transmission after 22 seconds.")
+			ticker.Stop()
+
+		case <-gracefulShutdown:
+			// Send CloseMessage after 40 seconds
+			log.Println("Sending CloseMessage and shutting down producer.")
+			closeMessage := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Producer finished work")
+			if err := conn.WriteMessage(websocket.CloseMessage, closeMessage); err != nil {
+				log.Printf("Error sending close message: %v", err)
+			}
 			interrupt <- os.Interrupt
 			return
-		case <-done: // Exit the loop if the connection is closed
-			log.Println("Exiting producer due to server close event")
+
+		case <-done:
+			// Handle connection close
+			log.Println("Exiting producer due to connection close.")
 			interrupt <- os.Interrupt
 			return
 		}

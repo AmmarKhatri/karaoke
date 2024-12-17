@@ -16,10 +16,8 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	// Create a 'done' channel to signal when to exit
-
 	// RoomID and player IDs
-	roomID := "room-2863eff5-8afd-40a7-8c9c-0c42844a29f9"
+	roomID := "room-4ecc7c96-3c3b-4f88-a629-74ff87a61acc"
 	listenerID := "listener1"
 	producerID := "producer1"
 
@@ -27,22 +25,12 @@ func main() {
 	mode := os.Args[1]
 
 	if mode == "0" {
-		// Start listener in a goroutine
-		go scripts.StartListener(roomID, listenerID, interrupt)
+		// Start listener
+		scripts.StartListener(roomID, listenerID, interrupt)
 	} else if mode == "1" {
 		// Start producer
 		scripts.StartProducer(roomID, producerID, interrupt)
 	} else {
 		log.Fatal("Invalid argument. Use 0 for listener and 1 for producer.")
 	}
-
-	// Wait for interrupt signal or done signal to terminate all connections
-	select {
-	case <-interrupt:
-		log.Println("Received interrupt signal. Closing all connections.")
-		os.Exit(0) // Exit after the interrupt signal
-	}
-
-	// Perform any cleanup if necessary
-	os.Exit(0)
 }

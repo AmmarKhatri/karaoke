@@ -8,16 +8,10 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var Addr = "localhost:8081"
-
-// Function to create a listener connection
+// StartListener handles the listener role
 func StartListener(roomID, playerID string, interrupt chan os.Signal) {
-	u := url.URL{
-		Scheme:   "ws",
-		Host:     Addr,
-		Path:     "/ws",
-		RawQuery: "roomID=" + roomID + "&playerID=" + playerID + "&role=listener",
-	}
+
+	u := url.URL{Scheme: "ws", Host: Addr, Path: "/ws", RawQuery: "roomID=" + roomID + "&playerID=" + playerID + "&role=tv"}
 	log.Printf("Listener %s connecting to %s", playerID, u.String())
 
 	// Establish WebSocket connection
@@ -31,7 +25,7 @@ func StartListener(roomID, playerID string, interrupt chan os.Signal) {
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("Listener read error:", err)
+			log.Printf("Listener read error: %v", err)
 			interrupt <- os.Interrupt
 			break
 		}

@@ -11,59 +11,71 @@ import (
 )
 
 func HandleConnections(w http.ResponseWriter, r *http.Request) {
-	// Upgrade initial GET request to a websocket
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Fatal("WebSocket upgrade failed:", err)
+		log.Printf("WebSocket upgrade failed: %v", err)
+		return
 	}
+	defer ws.Close()
 
-	// Register the new client
-	clients[ws] = true
-
-	// Get roomID and role from query params
 	roomID := r.URL.Query().Get("roomID")
 	playerID := r.URL.Query().Get("playerID")
-	role := r.URL.Query().Get("role") // "listener" or "pusher"
+	role := r.URL.Query().Get("role") // "tv" or "phone"
 
-	// Check if the game room exists in Redis (db 0) using utils.Redis
 	exists, err := utils.Redis.Exists(context.Background(), roomID).Result()
 	if err != nil || exists == 0 {
 		log.Printf("Game room %s does not exist", roomID)
-
-		// Send a close frame with a reason to the client
-		closeMessage := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Game room does not exist")
-		ws.WriteMessage(websocket.CloseMessage, closeMessage)
-
-		// Close WebSocket connection
-		ws.Close()
+		sendCloseMessage(ws, "Game room does not exist")
 		return
 	}
 
-	// Handle WebSocket pings/pongs
-	ws.SetReadLimit(512)
+	done := make(chan struct{}) // Signal to stop heartbeat
+	setupHeartbeat(ws, done)
+
+	if role == "tv" {
+		log.Printf("TV connected: PlayerID: %s, RoomID: %s", playerID, roomID)
+		listenToGameRoom(utils.Redis, roomID, ws)
+	} else if role == "phone" {
+		log.Printf("Phone connected: PlayerID: %s, RoomID: %s", playerID, roomID)
+		pushToGameRoom(utils.Redis, roomID, playerID, ws)
+	} else {
+		log.Printf("Invalid role: %s", role)
+		sendCloseMessage(ws, "Invalid role")
+	}
+
+	close(done) // Stop heartbeat when connection handler exits
+}
+
+// sendCloseMessage sends a close frame with a custom reason
+func sendCloseMessage(ws *websocket.Conn, reason string) {
+	closeMessage := websocket.FormatCloseMessage(websocket.CloseNormalClosure, reason)
+	ws.WriteMessage(websocket.CloseMessage, closeMessage)
+}
+
+// setupHeartbeat ensures the connection stays alive with pings/pongs
+func setupHeartbeat(ws *websocket.Conn, done chan struct{}) {
 	ws.SetReadDeadline(time.Now().Add(60 * time.Second))
 	ws.SetPongHandler(func(string) error {
 		ws.SetReadDeadline(time.Now().Add(60 * time.Second))
 		return nil
 	})
 
-	// Lock for reading the map (multiple goroutines can read concurrently)
-	mu.RLock()
-	clientRedis, existsRoom := gameRooms[roomID]
-	mu.RUnlock()
+	go func() {
+		ticker := time.NewTicker(50 * time.Second)
+		defer ticker.Stop()
 
-	if !existsRoom {
-		// Lock for writing the map (only one goroutine can write at a time)
-		mu.Lock()
-		clientRedis = utils.Redis
-		gameRooms[roomID] = clientRedis
-		mu.Unlock()
-	}
-
-	// Handle based on role
-	if role == "listener" {
-		go listenToGameRoom(clientRedis, roomID, ws)
-	} else if role == "pusher" {
-		go handlePusherEvents(clientRedis, roomID, playerID, ws)
-	}
+		for {
+			select {
+			case <-done:
+				log.Println("Stopping heartbeat: Connection closed")
+				return // Stop the heartbeat goroutine
+			case <-ticker.C:
+				if err := ws.WriteMessage(websocket.PingMessage, nil); err != nil {
+					log.Printf("Heartbeat ping failed: %v", err)
+					ws.Close()
+					return
+				}
+			}
+		}
+	}()
 }
