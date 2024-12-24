@@ -10,6 +10,7 @@ import (
 
 func main() {
 	http.HandleFunc("/ws", helpers.HandleConnections)
+	http.HandleFunc("/connect-tv/", helpers.ConnectTV)
 	log.Println("WebSocket server started on :8081")
 
 	// connect to Redis
