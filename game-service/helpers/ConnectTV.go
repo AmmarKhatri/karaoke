@@ -72,7 +72,6 @@ func ConnectTV(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s disconnected from TV ID %s", role, tvID)
 }
 
-// handleCommunication manages bidirectional communication between TV and Phone
 func handleCommunication(tvID string, role string, ws *websocket.Conn) {
 	for {
 		// Read message from the WebSocket
@@ -92,21 +91,73 @@ func handleCommunication(tvID string, role string, ws *websocket.Conn) {
 
 		log.Printf("Received from %s: %+v", role, instruction)
 
-		// Forward the message to the corresponding device
-		connectionsLock.Lock()
-		var targetConn *websocket.Conn
-		if role == "tv" {
-			targetConn = phoneConnections[tvID]
-		} else if role == "phone" {
-			targetConn = tvConnections[tvID]
-		}
-		connectionsLock.Unlock()
+		// Handle "exit" command
+		if instruction.Command == "exit" {
+			log.Printf("Exit command received from %s. Notifying and closing connections for TV ID %s.", role, tvID)
 
-		if targetConn != nil {
-			err = targetConn.WriteJSON(instruction)
-			if err != nil {
-				log.Printf("Write error to %s: %v", role, err)
+			// Notify the other device
+			connectionsLock.Lock()
+			var targetConn *websocket.Conn
+			if role == "tv" {
+				targetConn = phoneConnections[tvID]
+			} else if role == "phone" {
+				targetConn = tvConnections[tvID]
+			}
+			if targetConn != nil {
+				targetConn.WriteJSON(models.Instruction{
+					Role:    role,
+					Command: "exit",
+				})
+			}
+			// Close both connections
+			if conn, exists := tvConnections[tvID]; exists {
+				conn.Close()
+				delete(tvConnections, tvID)
+			}
+			if conn, exists := phoneConnections[tvID]; exists {
+				conn.Close()
+				delete(phoneConnections, tvID)
+			}
+			connectionsLock.Unlock()
+			break
+		}
+
+		// Handle "disconnect" command
+		if instruction.Command == "disconnect" && role == "phone" {
+			log.Printf("Disconnect command received from phone for TV ID %s. Notifying TV and closing phone connection.", tvID)
+
+			// Notify the TV
+			connectionsLock.Lock()
+			if conn, exists := tvConnections[tvID]; exists {
+				conn.WriteJSON(models.Instruction{
+					Role:    role,
+					Command: "disconnect",
+				})
+			}
+			// Close the phone connection
+			if conn, exists := phoneConnections[tvID]; exists {
+				conn.Close()
+				delete(phoneConnections, tvID)
+			}
+			connectionsLock.Unlock()
+			break
+		}
+
+		// Forward message to the other device
+		connectionsLock.Lock()
+		if role == "tv" {
+			// TV messages are sent to the phone
+			targetConn := phoneConnections[tvID]
+			if targetConn != nil && targetConn != ws {
+				targetConn.WriteJSON(instruction)
+			}
+		} else if role == "phone" {
+			// Phone messages are sent to the TV
+			targetConn := tvConnections[tvID]
+			if targetConn != nil && targetConn != ws {
+				targetConn.WriteJSON(instruction)
 			}
 		}
+		connectionsLock.Unlock()
 	}
 }

@@ -38,36 +38,40 @@ func main() {
 	}
 	defer conn.Close()
 
-	// Role-specific logic
-	if role == "tv" {
-		// TV listens for instructions from the phone
-		log.Println("TV is ready to receive instructions...")
-		clientutils.ReceiveMessages(conn)
-	} else if role == "phone" {
-		// Phone sends instructions to the TV
-		reader := bufio.NewReader(os.Stdin)
-		for {
-			fmt.Print("Enter command for TV (or 'exit' to quit): ")
-			command, _ := reader.ReadString('\n')
-			command = strings.TrimSpace(command)
+	// Channel to signal the listener to stop
+	stopChan := make(chan struct{})
 
-			if command == "exit" {
-				break
-			}
+	// Start a goroutine to listen for messages
+	go func() {
+		clientutils.ReceiveMessages(conn, stopChan)
+	}()
 
-			// Send the command as an Instruction
-			instruction := clientutils.Instruction{
-				Role:    role,
-				Command: command,
-			}
-
-			err = clientutils.SendInstruction(conn, instruction)
-			if err != nil {
-				log.Printf("Failed to send instruction: %v", err)
-				break
-			}
+	// Role-specific logic for sending messages
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Printf("[%s] Enter command (or 'exit' to quit): \n", strings.ToUpper(role))
+		command, _ := reader.ReadString('\n')
+		command = strings.TrimSpace(command)
+		// Send other commands as an Instruction
+		instruction := clientutils.Instruction{
+			Role:    role,
+			Command: command,
+		}
+		err = clientutils.SendInstruction(conn, instruction)
+		if err != nil {
+			log.Printf("Failed to send exit instruction: %v", err)
 		}
 
-		log.Println("Phone client exiting...")
+		// Wait for a short duration to ensure the server receives the message
+
+		// Handle exit command from the user
+		if command == "exit" || (command == "disconnect" && role == "phone") {
+			// Signal the listener goroutine to stop
+			close(stopChan)
+			conn.Close()
+			break
+		}
 	}
+
+	log.Printf("%s client exiting...", strings.ToUpper(role))
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/url"
+	"os"
 
 	"github.com/gorilla/websocket"
 )
@@ -40,26 +41,50 @@ func SendInstruction(conn *websocket.Conn, instruction Instruction) error {
 		return err
 	}
 
-	log.Printf("Sent: %+v", instruction)
+	//log.Printf("Sent: %+v", instruction)
 	return nil
 }
 
-// ReceiveMessages listens for messages from the WebSocket server
-func ReceiveMessages(conn *websocket.Conn) {
+func ReceiveMessages(conn *websocket.Conn, stopChan chan struct{}) {
 	for {
-		_, message, err := conn.ReadMessage()
-		if err != nil {
-			log.Printf("Read error: %v", err)
-			break
-		}
+		select {
+		case <-stopChan:
+			log.Println("Stopping message listener...")
+			return
+		default:
+			// Read from the WebSocket
+			_, message, err := conn.ReadMessage()
+			if err != nil {
+				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+					log.Println("Connection closed normally.")
+				} else {
+					log.Printf("Read error: %v", err)
+				}
+				return
+			}
 
-		var instruction Instruction
-		err = json.Unmarshal(message, &instruction)
-		if err != nil {
-			log.Printf("Invalid message format: %v", err)
-			continue
-		}
+			var instruction Instruction
+			err = json.Unmarshal(message, &instruction)
+			if err != nil {
+				log.Printf("Invalid message format: %v", err)
+				continue
+			}
 
-		log.Printf("Received: %+v", instruction)
+			// Handle specific commands
+			switch instruction.Command {
+			case "exit":
+				log.Printf("Received 'exit' command. Closing connection and exiting...")
+				close(stopChan) // Signal listener to stop
+				conn.Close()
+				os.Exit(0)
+
+			case "disconnect":
+				if instruction.Role == "phone" {
+					log.Printf("Received 'disconnect' command from Phone. New device can connect to TV")
+				}
+			default:
+				log.Printf("Received: %+v", instruction)
+			}
+		}
 	}
 }
