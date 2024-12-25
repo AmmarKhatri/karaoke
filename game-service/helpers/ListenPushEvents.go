@@ -15,7 +15,7 @@ func listenToGameRoom(redisClient *redis.Client, roomID string, ws *websocket.Co
 	for {
 		entries, err := redisClient.XRead(context.Background(), &redis.XReadArgs{
 			Streams: []string{"stream:" + roomID, "$"},
-			Block:   time.Duration(1 * time.Second), // Wait up to 1 seconds for new entries
+			Block:   time.Duration(0 * time.Millisecond), // Wait up to 100 seconds for new entries
 		}).Result()
 
 		if err != nil && err != redis.Nil {
