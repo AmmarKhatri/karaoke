@@ -6,7 +6,7 @@ import (
 	"game-service/utils"
 )
 
-func ValidateEvent(event GameRoomEvent, roomID string) (error, bool) {
+func ValidateEvent(event models.GameRoomEvent, roomID string) (error, bool) {
 	if event.EventType == "" {
 		return errors.New("event type is required"), false
 	}

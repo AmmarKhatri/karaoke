@@ -9,14 +9,22 @@ type GameRoomRequest struct {
 
 // GameRoom represents the structure of a game room in Redis
 type GameRoomEntity struct {
-	ID                    string   `json:"id"`
-	MinPlayers            int      `json:"minPlayers"`
-	MaxPlayers            int      `json:"maxPlayers"`
-	CreatedBy             string   `json:"createdBy"`
-	Type                  string   `json:"type"`
-	Status                string   `json:"status"`
-	ConnectedPlayers      []string `json:"connectedPlayers"`
-	UnityConnectedPlayers []string `json:"unityConnectedPlayers"`
+	ID               string                 `json:"id"`
+	MinPlayers       int                    `json:"minPlayers"`
+	MaxPlayers       int                    `json:"maxPlayers"`
+	CreatedBy        string                 `json:"createdBy"`
+	Type             string                 `json:"type"`
+	Status           string                 `json:"status"`
+	ConnectedPlayers map[string]PlayerStats `json:"connectedPlayers"`
+	JoinedPlayers    int                    `json:"joinedPlayers"`
+}
+
+type PlayerStats struct {
+	PlayerID       string `json:"playerID"`
+	SkillLevel     string `json:"skillLevel"`
+	Points         int    `json:"points"`
+	PhoneConnected bool   `json:"phoneConnected"`
+	UnityConnected bool   `json:"unityConnected"`
 }
 type LiveGameRoomRequest struct {
 	SkillLevel string `json:"skillLevel" binding:"required"`

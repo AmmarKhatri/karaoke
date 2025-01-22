@@ -24,14 +24,14 @@ func CreateLocalGameRoom(c *gin.Context) {
 
 	// Create a new GameRoom instance
 	gameRoom := models.GameRoomEntity{
-		ID:                    roomID,
-		MinPlayers:            request.MinPlayers,
-		MaxPlayers:            request.MaxPlayers,
-		CreatedBy:             request.CreatedBy,
-		Type:                  "local",
-		Status:                "waiting",  // Initial status set to "waiting"
-		ConnectedPlayers:      []string{}, // Initialize empty list for connected players
-		UnityConnectedPlayers: []string{}, // Initialize empty list for Unity connected players
+		ID:               roomID,
+		MinPlayers:       request.MinPlayers,
+		MaxPlayers:       request.MaxPlayers,
+		CreatedBy:        request.CreatedBy,
+		Type:             "local",
+		Status:           "waiting",                           // Initial status set to "waiting"
+		ConnectedPlayers: make(map[string]models.PlayerStats), // Initialize empty map for connected players
+		JoinedPlayers:    0,
 	}
 
 	// Save the game room to Redis (key-value store for room info)

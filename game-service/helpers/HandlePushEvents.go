@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"context"
+	"game-service/models"
 	"log"
 
 	"github.com/gorilla/websocket"
@@ -12,7 +13,7 @@ func pushToGameRoom(redisClient *redis.Client, roomID, playerID string, ws *webs
 	defer ws.Close()
 
 	for {
-		var event GameRoomEvent
+		var event models.GameRoomEvent
 		if err := ws.ReadJSON(&event); err != nil {
 			log.Printf("Error reading event: %v", err)
 			break

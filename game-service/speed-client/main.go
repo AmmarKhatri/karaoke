@@ -16,11 +16,12 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	// RoomID and player IDs
-	roomID := "room-e0b27af1-b018-4cef-a0d4-0d9855f0f5b9"
+	roomID := "room-8dacefa4-1d2c-4bfb-bc25-641b2fc0f509"
 	producerID := "producer1"
-
+	listenerID := "listener1"
 	// Start the high-speed producer
 	log.Println("Starting high-speed event producer...")
+	go StartFastListener(roomID, listenerID, interrupt)
 	go StartFastProducer(roomID, producerID, interrupt)
 
 	// Wait for interrupt signal
@@ -72,6 +73,50 @@ func StartFastProducer(roomID, producerID string, interrupt chan os.Signal) {
 				close(done)
 			}
 
+		}
+	}
+}
+
+// StartFastListener counts the number of events received via WebSocket and logs every 2 seconds.
+func StartFastListener(roomID, listenerID string, interrupt chan os.Signal) {
+	u := url.URL{Scheme: "ws", Host: "localhost:8081", Path: "/ws", RawQuery: "roomID=" + roomID + "&playerID=" + listenerID + "&role=tv"}
+	log.Printf("Listener %s connecting to %s", listenerID, u.String())
+
+	// Establish WebSocket connection
+	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		log.Fatal("Listener connection error:", err)
+	}
+	defer conn.Close()
+
+	eventCount := 0
+	done := make(chan bool)
+	go func() {
+		<-interrupt
+		done <- true
+	}()
+
+	// Log the event count every 2 seconds
+	go func() {
+		for {
+			time.Sleep(2 * time.Second)
+			log.Printf("Listener %s has received %d events so far.", listenerID, eventCount)
+		}
+	}()
+
+	for {
+		select {
+		case <-done:
+			log.Printf("Listener %s received %d events.", listenerID, eventCount)
+			return
+		default:
+			_, _, err := conn.ReadMessage()
+			if err != nil {
+				log.Println("Listener read error:", err)
+				return
+			}
+			eventCount++
+			//log.Printf("Listener %s received event: %s", listenerID, message)
 		}
 	}
 }

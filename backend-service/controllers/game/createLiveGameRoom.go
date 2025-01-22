@@ -101,14 +101,14 @@ func CreateLiveGameRoom(c *gin.Context) {
 
 			// Create the game room entity with the same Room ID for both players
 			gameRoom := models.GameRoomEntity{
-				ID:                    roomID,
-				MinPlayers:            2,
-				MaxPlayers:            2,
-				CreatedBy:             request.CreatedBy,
-				Type:                  "live",
-				Status:                "waiting",
-				ConnectedPlayers:      []string{},
-				UnityConnectedPlayers: []string{},
+				ID:               roomID,
+				MinPlayers:       2,
+				MaxPlayers:       2,
+				CreatedBy:        request.CreatedBy,
+				Type:             "live",
+				Status:           "waiting",
+				ConnectedPlayers: make(map[string]models.PlayerStats), // Initialize empty map for connected players
+				JoinedPlayers:    0,
 			}
 
 			// Save the game room to Redis
