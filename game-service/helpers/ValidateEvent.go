@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"errors"
+	"game-service/helpers/states"
 	"game-service/models"
 	"game-service/utils"
 )
@@ -13,6 +14,7 @@ func ValidateEvent(event models.GameRoomEvent, roomID string) (error, bool) {
 	if event.Data == "" {
 		return errors.New("event data is required"), false
 	}
+
 	// Create a variable to store the game room data
 	var gameRoom models.GameRoomEntity
 
@@ -21,14 +23,33 @@ func ValidateEvent(event models.GameRoomEvent, roomID string) (error, bool) {
 	if err != nil {
 		return errors.New("game room not found"), true
 	}
-	//start game
-	if gameRoom.Status == "waiting" && event.PlayerID == gameRoom.CreatedBy && event.EventType == "startGame" {
-		gameRoom.Status = "started"
-		err := utils.Set(utils.Redis, roomID, &gameRoom, 0)
-		if err != nil {
-			return errors.New("game room not found"), true
-		}
-		return nil, false
+
+	// Determine the current state based on the game room's status
+	var currentState states.GameState
+	switch gameRoom.Status {
+	case models.Waiting:
+		currentState = &states.WaitingState{}
+	case models.Started:
+		currentState = &states.StartedState{}
+	case models.Paused:
+		currentState = &states.PausedState{}
+	case models.Finished:
+		currentState = &states.FinishedState{}
+	default:
+		return errors.New("invalid game room status"), true
 	}
+
+	// Use the current state to handle the event
+	err = currentState.HandleEvent(event, &gameRoom)
+	if err != nil {
+		return err, false
+	}
+
+	// Save the updated game room state back to Redis
+	err = utils.Set(utils.Redis, roomID, &gameRoom, 0)
+	if err != nil {
+		return errors.New("failed to update game room"), true
+	}
+
 	return nil, false
 }
