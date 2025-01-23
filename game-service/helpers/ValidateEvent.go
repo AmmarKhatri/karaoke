@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"errors"
+	"fmt"
 	"game-service/helpers/states"
 	"game-service/models"
 	"game-service/utils"
@@ -26,6 +27,7 @@ func ValidateEvent(event models.GameRoomEvent, roomID string) (error, bool) {
 
 	// Determine the current state based on the game room's status
 	var currentState states.GameState
+	fmt.Println("Current Status: ", gameRoom.Status)
 	switch gameRoom.Status {
 	case models.Waiting:
 		currentState = &states.WaitingState{}
