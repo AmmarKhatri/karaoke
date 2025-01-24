@@ -32,7 +32,7 @@ func pushToGameRoom(redisClient *redis.Client, roomID, playerID string, ws *webs
 		_, err = redisClient.XAdd(context.Background(), &redis.XAddArgs{
 			Stream: "stream:" + roomID,
 			Values: map[string]interface{}{
-				"eventType": event.EventType,
+				"eventType": string(event.EventType),
 				"createdBy": playerID,
 				"data":      event.Data,
 			},
