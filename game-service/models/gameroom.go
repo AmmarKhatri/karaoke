@@ -22,6 +22,7 @@ type GameRoomEntity struct {
 }
 
 type PlayerStats struct {
+	PlayerName     string `json:"playerName"`
 	SkillLevel     string `json:"skillLevel"`
 	Points         int    `json:"points"`
 	PhoneConnected bool   `json:"phoneConnected"`

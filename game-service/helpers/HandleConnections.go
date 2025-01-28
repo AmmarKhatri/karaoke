@@ -29,6 +29,9 @@ func HandleConnections(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//Check if player can join or already exists
+	CheckAndAddPlayer(playerID, roomID, role)
+
 	done := make(chan struct{}) // Signal to stop heartbeat
 	setupHeartbeat(ws, done)
 
