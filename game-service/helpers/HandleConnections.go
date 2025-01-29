@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"context"
+	"game-service/models"
 	"game-service/utils"
 	"log"
 	"net/http"
@@ -29,11 +30,11 @@ func HandleConnections(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//Check if player can join or already exists
+	// Check if player can join or already exists
 	CheckAndAddPlayer(playerID, roomID, role)
 
 	done := make(chan struct{}) // Signal to stop heartbeat
-	setupHeartbeat(ws, done)
+	go setupHeartbeat(ws, roomID, playerID, role, done)
 
 	if role == "tv" {
 		log.Printf("TV connected: PlayerID: %s, RoomID: %s", playerID, roomID)
@@ -56,7 +57,8 @@ func sendCloseMessage(ws *websocket.Conn, reason string) {
 }
 
 // setupHeartbeat ensures the connection stays alive with pings/pongs
-func setupHeartbeat(ws *websocket.Conn, done chan struct{}) {
+// and turns off the player's connection status in the game room when the connection is lost
+func setupHeartbeat(ws *websocket.Conn, roomID, playerID, role string, done chan struct{}) {
 	ws.SetReadDeadline(time.Now().Add(60 * time.Second))
 	ws.SetPongHandler(func(string) error {
 		ws.SetReadDeadline(time.Now().Add(60 * time.Second))
@@ -71,14 +73,46 @@ func setupHeartbeat(ws *websocket.Conn, done chan struct{}) {
 			select {
 			case <-done:
 				log.Println("Stopping heartbeat: Connection closed")
-				return // Stop the heartbeat goroutine
+				updatePlayerConnectionStatus(roomID, playerID, role, false) // Turn off the player's connection
+				return                                                      // Stop the heartbeat goroutinei
 			case <-ticker.C:
 				if err := ws.WriteMessage(websocket.PingMessage, nil); err != nil {
-					log.Printf("Heartbeat ping failed: %v", err)
+					log.Printf("Heartbeat ping failed for player %s in room %s: %v", playerID, roomID, err)
 					ws.Close()
+					updatePlayerConnectionStatus(roomID, playerID, role, false) // Turn off the player's connection
 					return
 				}
 			}
 		}
 	}()
+}
+
+// updatePlayerConnectionStatus updates the connection status of a player in the game room without removing them
+func updatePlayerConnectionStatus(roomID, playerID, role string, status bool) {
+	var gameRoom models.GameRoomEntity
+
+	// Retrieve the game room from Redis
+	err := utils.Get(utils.Redis, roomID, &gameRoom)
+	if err != nil {
+		log.Printf("Failed to retrieve game room %s: %v", roomID, err)
+		return
+	}
+
+	// Update the player's connection status based on the role
+	if player, exists := gameRoom.ConnectedPlayers[playerID]; exists {
+		if role == "phone" {
+			player.PhoneConnected = status
+		} else if role == "tv" {
+			player.UnityConnected = status
+		}
+
+		// Persist the updated player data
+		gameRoom.ConnectedPlayers[playerID] = player
+		log.Printf("Player %s connection status updated in room %s: %+v", playerID, roomID, player)
+
+		// Save the updated game room back to Redis
+		utils.Set(utils.Redis, roomID, &gameRoom, 0)
+	} else {
+		log.Printf("Player %s not found in room %s", playerID, roomID)
+	}
 }

@@ -37,6 +37,7 @@ func CheckAndAddPlayer(playerID, roomID, role string) {
 			PhoneConnected: player.PhoneConnected,
 			UnityConnected: player.UnityConnected,
 		}
+		utils.Set(utils.Redis, roomID, &gameRoom, 0) // save it
 		log.Printf("Player %s updated in room %s: %+v", playerID, gameRoom.ID, gameRoom.ConnectedPlayers[playerID])
 		return
 	}
