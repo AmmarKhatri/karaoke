@@ -52,14 +52,10 @@ func listenToGameRoom(redisClient *redis.Client, roomID string, ws *websocket.Co
 				log.Printf("Error reading from Redis stream: %v", err)
 				return
 			}
-			//TODO: `conversation FIX:
-			//2025-01-31 14:48:40 2025/01/31 09:48:40 WebSocket disconnected: read tcp 172.18.0.5:8081->172.18.0.1:59662: use of closed network connection
-			//2025-01-31 14:48:40 2025/01/31 09:48:40 http: panic serving 172.18.0.1:59662: interface conversion: interface {} is string, not models.EventType
-			// Forward events to WebSocket
 			for _, entry := range entries {
 				for _, message := range entry.Messages {
 					event := models.GameRoomEvent{
-						EventType: message.Values["eventType"].(models.EventType),
+						EventType: models.EventType(message.Values["eventType"].(string)),
 						PlayerID:  message.Values["createdBy"].(string),
 						Data:      message.Values["data"],
 					}

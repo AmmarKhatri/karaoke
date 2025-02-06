@@ -39,7 +39,7 @@ func (w *WaitingState) HandleEvent(event models.GameRoomEvent, gameRoom *models.
 		}
 		// Send the game specifications to the Redis stream
 		gameSpecsEvent := map[string]interface{}{
-			"eventType": "gameSpecifications",
+			"eventType": string(models.GameSpecsEvent),
 			"createdBy": "system",
 			"data": fmt.Sprintf("Game started with artist: %s, title: %s, bpm: %.2f",
 				song.Artist, song.Title, song.BPM),
@@ -76,7 +76,7 @@ func sendSongEvents(gameRoom *models.GameRoomEntity, song *models.UltraStarSong)
 
 		// Send the note as an event to Redis
 		noteEvent := map[string]interface{}{
-			"eventType": "songNote",
+			"eventType": string(models.SongNote),
 			"createdBy": "system",
 			"data": fmt.Sprintf("Type: %s, Timestamp: %d, Duration: %d, Pitch: %d, Text: %s",
 				note.Type, note.Timestamp, note.Duration, note.Pitch, note.Text),

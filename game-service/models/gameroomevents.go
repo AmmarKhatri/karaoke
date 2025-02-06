@@ -9,6 +9,8 @@ const (
 	PlayerConnected    EventType = "playerConnected"
 	playerDisconnected EventType = "playerDisconnected"
 	EndGame            EventType = "endGame"
+	SongNote           EventType = "songNote"
+	GameSpecsEvent     EventType = "gameSpecifications"
 )
 
 // Define a struct for game room events
