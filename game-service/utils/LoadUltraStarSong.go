@@ -9,7 +9,6 @@ import (
 	"strings"
 )
 
-// LoadUltraStarFile loads and parses an UltraStar Deluxe song file
 func LoadUltraStarFile(filename string) (*models.UltraStarSong, error) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -20,7 +19,7 @@ func LoadUltraStarFile(filename string) (*models.UltraStarSong, error) {
 	song := &models.UltraStarSong{}
 	scanner := bufio.NewScanner(file)
 
-	var beatDuration float64 // Beat duration in milliseconds
+	var bpm float64 // BPM to be used in conversion
 
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -51,12 +50,12 @@ func LoadUltraStarFile(filename string) (*models.UltraStarSong, error) {
 			case "LANGUAGE":
 				song.Language = value
 			case "BPM":
-				bpm, err := strconv.ParseFloat(value, 64)
-				if err != nil || bpm <= 0 {
+				parsedBPM, err := strconv.ParseFloat(value, 64)
+				if err != nil || parsedBPM <= 0 {
 					return nil, fmt.Errorf("invalid BPM value: %s", value)
 				}
-				song.BPM = bpm
-				beatDuration = 60000 / bpm // Beat duration in milliseconds
+				song.BPM = parsedBPM
+				bpm = parsedBPM // Use for tick conversion
 			case "GAP":
 				gap, err := strconv.Atoi(value)
 				if err != nil {
@@ -65,7 +64,7 @@ func LoadUltraStarFile(filename string) (*models.UltraStarSong, error) {
 				song.GAP = gap
 			}
 		} else if len(line) > 0 && (line[0] == ':' || line[0] == '*' || line[0] == '-' || line[0] == 'F') {
-			note, err := parseNoteLine(line, beatDuration)
+			note, err := parseNoteLine(line, bpm)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing note line '%s': %w", line, err)
 			}
@@ -77,10 +76,10 @@ func LoadUltraStarFile(filename string) (*models.UltraStarSong, error) {
 		return nil, fmt.Errorf("error reading file: %w", err)
 	}
 
-	// Debugging: Calculate and print total song duration
+	// Debugging: Print total song duration
 	if len(song.Notes) > 0 {
 		lastNote := song.Notes[len(song.Notes)-1]
-		totalDuration := (float64(lastNote.Timestamp+lastNote.Duration) * beatDuration) + float64(song.GAP)
+		totalDuration := float64(lastNote.Timestamp+lastNote.Duration) + float64(song.GAP)
 		fmt.Printf("Total Song Duration: %.2f seconds\n", totalDuration/1000)
 	}
 

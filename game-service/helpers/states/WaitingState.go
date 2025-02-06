@@ -70,11 +70,21 @@ func sendSongEvents(gameRoom *models.GameRoomEntity, song *models.UltraStarSong)
 
 	log.Printf("Starting song playback: %s by %s", song.Title, song.Artist)
 
-	for _, note := range song.Notes {
-		// Simulate playback by waiting for the note's timestamp
-		time.Sleep(time.Duration(note.Timestamp) * time.Millisecond)
+	var lastTimestamp int // Track the previous note's timestamp
 
-		// Send the note as an event to Redis
+	for i, note := range song.Notes {
+		// Calculate delay: Current timestamp - Previous timestamp
+		var delay int
+		if i == 0 {
+			delay = song.GAP // First note: Use the GAP offset
+		} else {
+			delay = note.Timestamp - lastTimestamp
+		}
+
+		// Simulate playback delay
+		time.Sleep(time.Duration(delay) * time.Millisecond)
+
+		// Send the note event to Redis
 		noteEvent := map[string]interface{}{
 			"eventType": string(models.SongNote),
 			"createdBy": "system",
@@ -90,6 +100,9 @@ func sendSongEvents(gameRoom *models.GameRoomEntity, song *models.UltraStarSong)
 			log.Printf("Failed to send note to Redis: %v", err)
 			return
 		}
+
+		// Update lastTimestamp for next iteration
+		lastTimestamp = note.Timestamp
 	}
 
 	log.Printf("Song playback completed: %s by %s", song.Title, song.Artist)
