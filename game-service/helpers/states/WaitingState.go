@@ -70,6 +70,19 @@ func sendSongEvents(gameRoom *models.GameRoomEntity, song *models.UltraStarSong)
 
 	log.Printf("Starting song playback: %s by %s", song.Title, song.Artist)
 
+	// Store the initial RoomScores before sending song notes
+	initialRoomScores := models.RoomScores{
+		SongNote:         models.Note{}, // Initial empty note
+		ConnectedPlayers: gameRoom.ConnectedPlayers,
+	}
+
+	// Store the initial RoomScores in Redis
+	err := utils.Set(utils.Redis, "room_scores:"+gameRoom.ID, initialRoomScores, 0)
+	if err != nil {
+		log.Printf("Failed to store initial room scores in Redis: %v", err)
+		return
+	}
+
 	var lastTimestamp int // Track the previous note's timestamp
 
 	for i, note := range song.Notes {
@@ -84,6 +97,24 @@ func sendSongEvents(gameRoom *models.GameRoomEntity, song *models.UltraStarSong)
 		// Simulate playback delay
 		time.Sleep(time.Duration(delay) * time.Millisecond)
 
+		// Fetch the latest RoomScores from Redis
+		var roomScores models.RoomScores
+		err := utils.Get(utils.Redis, "room_scores:"+gameRoom.ID, &roomScores)
+		if err != nil {
+			log.Printf("Failed to fetch room scores from Redis: %v", err)
+			return
+		}
+
+		// Update only the SongNote while keeping ConnectedPlayers intact
+		roomScores.SongNote = note
+
+		// Persist the updated RoomScores back to Redis
+		err = utils.Set(utils.Redis, "room_scores:"+gameRoom.ID, roomScores, 0)
+		if err != nil {
+			log.Printf("Failed to store updated room scores in Redis: %v", err)
+			return
+		}
+
 		// Send the note event to Redis
 		noteEvent := map[string]interface{}{
 			"eventType": string(models.SongNote),
@@ -92,7 +123,7 @@ func sendSongEvents(gameRoom *models.GameRoomEntity, song *models.UltraStarSong)
 				note.Type, note.Timestamp, note.Duration, note.Pitch, note.Text),
 		}
 
-		_, err := utils.Redis.XAdd(context.Background(), &redis.XAddArgs{
+		_, err = utils.Redis.XAdd(context.Background(), &redis.XAddArgs{
 			Stream: stream,
 			Values: noteEvent,
 		}).Result()

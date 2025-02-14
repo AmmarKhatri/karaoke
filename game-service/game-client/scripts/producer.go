@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/gorilla/websocket"
 )
@@ -39,7 +40,8 @@ func StartProducer(roomID, playerID string, interrupt chan os.Signal) {
 	// Input reader from CLI
 	inputReader := bufio.NewReader(os.Stdin)
 
-	log.Println("Producer ready. Type eventType to send to the server or type 'exit' to quit.")
+	log.Println("Producer ready. Type 'eventType [data]' to send to the server or type 'exit' to quit.")
+	log.Println("Example: message Hello World!")
 
 	// Main loop
 	for {
@@ -61,23 +63,32 @@ func StartProducer(roomID, playerID string, interrupt chan os.Signal) {
 
 		default:
 			// Read input from CLI
-			log.Print("Enter eventType: ")
+			log.Print("Enter eventType [data]: ")
 			input, err := inputReader.ReadString('\n')
 			if err != nil {
 				log.Println("Error reading input:", err)
 				continue
 			}
 
-			input = input[:len(input)-1] // Remove newline character
+			input = strings.TrimSpace(input) // Remove newline and extra spaces
 			if input == "exit" {
 				log.Println("Exiting producer.")
 				interrupt <- os.Interrupt
 				return
 			}
 
+			// Split input into eventType and optional data
+			parts := strings.SplitN(input, " ", 2)
+			eventType := parts[0]
+			data := ""
+			if len(parts) > 1 {
+				data = parts[1]
+			}
+
 			// Send the input as an event to the server
 			err = conn.WriteJSON(map[string]string{
-				"eventType": input,
+				"eventType": eventType,
+				"data":      data,
 				"playerID":  playerID,
 			})
 			if err != nil {
@@ -85,7 +96,7 @@ func StartProducer(roomID, playerID string, interrupt chan os.Signal) {
 				close(done)
 				return
 			}
-			log.Printf("Producer %s sent eventType: %s", playerID, input)
+			log.Printf("Producer %s sent eventType: %s, data: %s", playerID, eventType, data)
 		}
 	}
 }
