@@ -12,9 +12,9 @@ func ValidateEvent(event models.GameRoomEvent, roomID string) (error, bool) {
 	if event.EventType == "" {
 		return errors.New("event type is required"), false
 	}
-	if event.Data == "" {
-		return errors.New("event data is required"), false
-	}
+	// if event.Data == "" {
+	// 	return errors.New("event data is required"), false
+	// }
 
 	// Create a variable to store the game room data
 	var gameRoom models.GameRoomEntity

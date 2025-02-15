@@ -2,6 +2,7 @@ package states
 
 import (
 	"errors"
+	"fmt"
 	"game-service/models"
 	"game-service/utils"
 	"math"
@@ -12,6 +13,7 @@ import (
 type StartedState struct{}
 
 func (s *StartedState) HandleEvent(event models.GameRoomEvent, gameRoom *models.GameRoomEntity) error {
+	fmt.Println(event)
 	if event.EventType == "pauseGame" && event.PlayerID == gameRoom.CreatedBy {
 		// VALIDATION OF CREATOR ONLY
 		gameRoom.Status = models.Paused
@@ -30,10 +32,13 @@ func (s *StartedState) HandleEvent(event models.GameRoomEvent, gameRoom *models.
 		}
 		// Get game room scores
 		roomScores := models.RoomScores{}
-		err = utils.Get(utils.Redis, "room_scores:"+gameRoom.ID, roomScores)
+		err = utils.Get(utils.Redis, "room_scores:"+gameRoom.ID, &roomScores)
 		if err != nil {
 			return err
 		}
+		fmt.Println(roomScores)
+		fmt.Println("Looking for PlayerID:", event.PlayerID)
+
 		// Do calculation against player and add the score
 		if math.Abs(float64(roomScores.SongNote.Pitch-pitchReceived)) < 3 {
 			playerScore := roomScores.ConnectedPlayers[event.PlayerID]
@@ -45,7 +50,7 @@ func (s *StartedState) HandleEvent(event models.GameRoomEvent, gameRoom *models.
 		if err != nil {
 			return err
 		}
-
+		return nil
 	}
 	return errors.New("invalid event in started state")
 }
