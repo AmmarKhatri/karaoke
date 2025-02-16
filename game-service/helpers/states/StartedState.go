@@ -36,15 +36,16 @@ func (s *StartedState) HandleEvent(event models.GameRoomEvent, gameRoom *models.
 		}
 
 		// Fetch only the SongNote from Redis
-		var songNote models.Note
+		var songNote models.NoteDetails
 		err = utils.Get(utils.Redis, "room_scores:"+gameRoom.ID+":note", &songNote)
 		if err != nil {
 			return err
 		}
 
 		// Check if pitch is within range and update the score atomically
-		if math.Abs(float64(songNote.Pitch-pitchReceived)) < 3 {
-			err := utils.Redis.HIncrBy(context.Background(), "room_scores:"+gameRoom.ID+":scores", event.PlayerID, 10000).Err()
+		if math.Abs(float64(songNote.Note.Pitch-pitchReceived)) <= float64(songNote.Offset) {
+			score := int64(float64(songNote.Note.Duration) / float64(songNote.TotalDuration) * 10000)
+			err := utils.Redis.HIncrBy(context.Background(), "room_scores:"+gameRoom.ID+":scores", event.PlayerID, score).Err()
 			if err != nil {
 				return err
 			}

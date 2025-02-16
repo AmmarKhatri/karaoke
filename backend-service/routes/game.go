@@ -12,5 +12,6 @@ func GameRoutes(r *gin.Engine) {
 	{
 		gameGroup.POST("/live", controllers.CreateLiveGameRoom)
 		gameGroup.POST("/local", controllers.CreateLocalGameRoom)
+		gameGroup.GET("/scores/:id", controllers.FetchGameRoomScores)
 	}
 }

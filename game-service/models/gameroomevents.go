@@ -11,6 +11,7 @@ const (
 	EndGame            EventType = "endGame"
 	SongNote           EventType = "songNote"
 	GameSpecsEvent     EventType = "gameSpecifications"
+	GameScores         EventType = "gameScores"
 )
 
 // Define a struct for game room events

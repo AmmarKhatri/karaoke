@@ -16,10 +16,11 @@ func LoadUltraStarFile(filename string) (*models.UltraStarSong, error) {
 	}
 	defer file.Close()
 
-	song := &models.UltraStarSong{}
+	song := &models.UltraStarSong{Offset: 3} // Set default Offset to 3
 	scanner := bufio.NewScanner(file)
 
-	var bpm float64 // BPM to be used in conversion
+	var bpm float64       // BPM to be used in conversion
+	var totalDuration int // Track total song duration (sum of all durations)
 
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -69,6 +70,9 @@ func LoadUltraStarFile(filename string) (*models.UltraStarSong, error) {
 				return nil, fmt.Errorf("error parsing note line '%s': %w", line, err)
 			}
 			song.Notes = append(song.Notes, note)
+
+			// Sum up total duration from all notes
+			totalDuration += note.Duration
 		}
 	}
 
@@ -76,12 +80,11 @@ func LoadUltraStarFile(filename string) (*models.UltraStarSong, error) {
 		return nil, fmt.Errorf("error reading file: %w", err)
 	}
 
+	// Set TotalDuration (sum of all note durations)
+	song.TotalDuration = totalDuration
+
 	// Debugging: Print total song duration
-	if len(song.Notes) > 0 {
-		lastNote := song.Notes[len(song.Notes)-1]
-		totalDuration := float64(lastNote.Timestamp+lastNote.Duration) + float64(song.GAP)
-		fmt.Printf("Total Song Duration: %.2f seconds\n", totalDuration/1000)
-	}
+	fmt.Printf("Total Song Duration: %.2f seconds\n", float64(song.TotalDuration+song.GAP)/1000)
 
 	return song, nil
 }
